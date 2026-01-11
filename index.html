@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mey Mey | Modern Apparel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2canvas is needed to create the receipt image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --khmer-font: 'Kantumruy Pro', sans-serif;
+            --english-font: 'Plus Jakarta Sans', sans-serif;
+        }
+        body {
+            font-family: var(--english-font);
+            background-color: #fafafa;
+            color: #1a1a1a;
+            transition: font-family 0.3s ease;
+        }
+        body.kh {
+            font-family: var(--khmer-font);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .product-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .product-card:hover {
+            transform: translateY(-8px);
+        }
+        .product-image-container {
+            overflow: hidden;
+            border-radius: 12px;
+            background: #f3f4f6;
+        }
+        .product-image-container img {
+            transition: transform 0.6s ease;
+        }
+        .product-card:hover .product-image-container img {
+            transform: scale(1.05);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .modal-enter {
+            animation: modalFade 0.3s ease-out forwards;
+        }
+        @keyframes modalFade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="glass sticky top-0 z-[100] border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-extrabold tracking-tighter text-slate-900 uppercase">MEY MEY</span>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <!-- Language Toggle -->
+                    <div class="flex bg-gray-100 p-1 rounded-full border border-gray-200">
+                        <button onclick="setLang('en')" id="btn-en" class="px-3 py-1 text-[10px] font-bold rounded-full transition-all bg-white shadow-sm text-slate-900">EN</button>
+                        <button onclick="setLang('kh')" id="btn-kh" class="px-3 py-1 text-[10px] font-bold rounded-full transition-all text-slate-400">KH</button>
+                    </div>
+
+                    <button id="cart-button" class="group relative p-2 bg-slate-900 text-white rounded-full hover:bg-slate-800 transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span id="cart-count" class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full border-2 border-white">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow" id="shop">
+        <div class="mb-12 text-center py-10">
+            <h1 data-t="hero_title" class="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 animate-fade-in">The Collection</h1>
+            <p data-t="hero_subtitle" class="text-slate-500 max-w-lg mx-auto animate-fade-in" style="animation-delay: 0.1s;">Premium quality apparel for your daily rotation.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center mb-12 gap-4">
+            <button data-cat="all" data-t="cat_all" class="cat-filter-btn px-6 py-2 text-sm font-semibold rounded-full transition-all bg-slate-900 text-white shadow-lg">All Items</button>
+            <button data-cat="tshirts" data-t="cat_tees" class="cat-filter-btn px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 bg-white border border-gray-200 rounded-full transition-all">Tees</button>
+            <button data-cat="hoodies" data-t="cat_outer" class="cat-filter-btn px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 bg-white border border-gray-200 rounded-full transition-all">Outerwear</button>
+            <button data-cat="sets" data-t="cat_sets" class="cat-filter-btn px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 bg-white border border-gray-200 rounded-full transition-all">Sets</button>
+        </div>
+
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+    </main>
+
+    <!-- Details Modal -->
+    <div id="details-modal" class="fixed inset-0 z-[300] hidden modal-enter">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="toggleDetails(null, false)"></div>
+        <div class="absolute inset-x-4 bottom-4 top-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+            <button onclick="toggleDetails(null, false)" class="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="w-full md:w-1/2 h-64 md:h-auto bg-gray-100">
+                <img id="detail-img" src="" class="w-full h-full object-cover" crossorigin="anonymous">
+            </div>
+            <div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center overflow-y-auto">
+                <span id="detail-cat" class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Category</span>
+                <h2 id="detail-name" class="text-3xl font-extrabold text-slate-900 mb-4">Product Name</h2>
+                <p id="detail-price" class="text-2xl font-bold text-slate-900 mb-6">$0.00</p>
+                <div class="prose prose-sm text-slate-500 mb-8">
+                    <p id="detail-desc">Detailed product information goes here.</p>
+                </div>
+                <div class="space-y-4">
+                    <button id="detail-add-btn" data-t="add_to_bag" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                        Add to Bag
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div id="cart-modal" class="fixed inset-0 z-[200] hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="toggleCart(false)"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col transform transition-transform translate-x-full" id="cart-panel">
+            <div class="p-6 flex items-center justify-between border-b">
+                <h3 data-t="cart_title" class="text-xl font-bold">Your Bag</h3>
+                <button onclick="toggleCart(false)" class="p-2 hover:bg-gray-100 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="cart-items" class="flex-grow overflow-y-auto p-6 space-y-6"></div>
+            
+            <!-- Customer Info Section -->
+            <div id="customer-info" class="px-6 py-4 bg-gray-50 border-t space-y-3">
+                <p data-t="order_details" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Order Details</p>
+                <input type="text" id="cust-name" data-placeholder="ph_name" placeholder="Full Name" class="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900">
+                <input type="tel" id="cust-phone" data-placeholder="ph_phone" placeholder="Phone Number" class="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900">
+            </div>
+
+            <div class="p-6 border-t space-y-4">
+                <div class="flex justify-between items-center text-slate-500">
+                    <span data-t="subtotal">Subtotal</span>
+                    <span id="cart-total-value" class="text-slate-900 font-bold">$0.00</span>
+                </div>
+                <button id="checkout-btn" data-t="checkout_btn" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all">
+                    Order via Telegram
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Receipt Template for Capture -->
+    <div id="pdf-container" style="position: absolute; left: -9999px; top: -9999px; visibility: hidden; pointer-events: none;">
+        <div id="pdf-template" style="background: white; padding: 40px; border: 1px solid #eee; width: 500px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 30px;">
+                <div>
+                    <h1 style="font-size: 32px; font-weight: 900; letter-spacing: -1.5px; margin: 0; color: #0f172a;">MEY MEY</h1>
+                    <p id="pdf-t-receipt" style="font-size: 12px; color: #64748b; margin: 5px 0; font-weight: 600; text-transform: uppercase;">Official Receipt</p>
+                </div>
+                <div style="text-align: right;">
+                    <p id="pdf-date" style="font-size: 12px; margin: 0; font-weight: bold;"></p>
+                    <p id="pdf-order-id" style="font-size: 12px; margin: 5px 0; color: #94a3b8; font-family: monospace;"></p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px; font-size: 13px;">
+                <p id="pdf-t-customer" style="margin: 0; color: #64748b;">Customer:</p>
+                <p style="margin: 2px 0; font-weight: 800; font-size: 16px;" id="pdf-cust-name"></p>
+                <p style="margin: 0; font-weight: 500;" id="pdf-cust-phone"></p>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 2px solid #f1f5f9;">
+                        <th id="pdf-t-item" style="padding: 12px 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Item</th>
+                        <th id="pdf-t-qty" style="padding: 12px 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Qty</th>
+                        <th id="pdf-t-total" style="padding: 12px 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-items-list"></tbody>
+            </table>
+            <div style="margin-top: 40px; border-top: 3px solid #000; padding-top: 25px; text-align: right;">
+                <p id="pdf-t-totaldue" style="font-size: 11px; color: #64748b; margin: 0; font-weight: 600;">Total Due</p>
+                <p id="pdf-grand-total" style="font-size: 36px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: -1px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-900 text-white rounded-full shadow-2xl opacity-0 translate-y-4 transition-all duration-300 z-[500] pointer-events-none text-sm font-medium"></div>
+
+    <script type="module">
+        const TELEGRAM_USERNAME = "Sa_vy1410";
+        const BOT_TOKEN = "8550272280:AAGBUV0I5z176U6ymnhZ6rF85LOHQr3Vs2U";
+        const SHOP_CHAT_ID = "6224393956";
+
+        const TRANSLATIONS = {
+            en: {
+                hero_title: "The Collection",
+                hero_subtitle: "Premium quality apparel for your daily rotation.",
+                cat_all: "All Items",
+                cat_tees: "Tees",
+                cat_outer: "Outerwear",
+                cat_sets: "Sets",
+                add_to_bag: "Add to Bag",
+                cart_title: "Your Bag",
+                order_details: "Order Details",
+                ph_name: "Full Name",
+                ph_phone: "Phone Number",
+                subtotal: "Subtotal",
+                checkout_btn: "Order via Telegram",
+                toast_added: "added to bag",
+                toast_validation: "Please enter name and phone number",
+                toast_receipt_sent: "Order Receipt Sent to Shop!",
+                processing: "Processing Order...",
+                empty_cart: "Bag is empty.",
+                items_label: "Items",
+                receipt_label: "Official Receipt",
+                customer_label: "Customer",
+                qty_label: "Qty",
+                total_label: "Total",
+                total_due_label: "Total Due",
+                hi_is: "Hi! This is",
+                just_placed: "I just placed an order",
+                sent_receipt: "I've sent the receipt to your bot. My phone is"
+            },
+            kh: {
+                hero_title: "បណ្តុំផលិតផល",
+                hero_subtitle: "សម្លៀកបំពាក់គុណភាពខ្ពស់ សម្រាប់ការប្រើប្រាស់ប្រចាំថ្ងៃរបស់អ្នក។",
+                cat_all: "ទាំងអស់",
+                cat_tees: "អាវយឺត",
+                cat_outer: "អាវក្រៅ",
+                cat_sets: "ឈុតសម្លៀកបំពាក់",
+                add_to_bag: "ដាក់ចូលកញ្ចប់",
+                cart_title: "កញ្ចប់ទំនិញរបស់អ្នក",
+                order_details: "ព័ត៌មានការកុម្ម៉ង់",
+                ph_name: "ឈ្មោះពេញ",
+                ph_phone: "លេខទូរស័ព្ទ",
+                subtotal: "សរុបរង",
+                checkout_btn: "កុម្ម៉ង់តាម Telegram",
+                toast_added: "បានដាក់ចូលកញ្ចប់",
+                toast_validation: "សូមបំពេញឈ្មោះ និងលេខទូរស័ព្ទ",
+                toast_receipt_sent: "វិក្កយបត្រត្រូវបានផ្ញើទៅកាន់ហាង!",
+                processing: "កំពុងដំណើរការ...",
+                empty_cart: "មិនមានទំនិញក្នុងកញ្ចប់ទេ។",
+                items_label: "ទំនិញ",
+                receipt_label: "វិក្កយបត្រផ្លូវការ",
+                customer_label: "អតិថិជន",
+                qty_label: "ចំនួន",
+                total_label: "សរុប",
+                total_due_label: "សរុបដែលត្រូវបង់",
+                hi_is: "សួស្តី! ខ្ញុំបាទ/ចាសឈ្មោះ",
+                just_placed: "ទើបតែបានកុម្ម៉ង់ទំនិញ",
+                sent_receipt: "ខ្ញុំបានផ្ញើវិក្កយបត្រទៅកាន់ bot រួចរាល់ហើយ។ លេខទូរស័ព្ទរបស់ខ្ញុំគឺ"
+            }
+        };
+
+        const PRODUCTS = [
+            { 
+                id: 1, 
+                name: { en: "Premium Cotton Tee - White", kh: "អាវយឺតសាច់កប្បាស - ពណ៌ស" }, 
+                price: 15.00, 
+                category: "tshirts", 
+                color: { en: "White", kh: "ពណ៌ស" }, 
+                desc: { en: "High-quality heavy cotton t-shirt with a relaxed fit.", kh: "អាវយឺតសាច់ក្រណាត់កប្បាសក្រាស់គុណភាពខ្ពស់ រាងធូរស្រឡះងាយស្លៀក។" }, 
+                img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 2, 
+                name: { en: "Premium Cotton Tee - Black", kh: "អាវយឺតសាច់កប្បាស - ពណ៌ខ្មៅ" }, 
+                price: 15.00, 
+                category: "tshirts", 
+                color: { en: "Black", kh: "ពណ៌ខ្មៅ" }, 
+                desc: { en: "Classic black tee made from premium materials.", kh: "អាវយឺតពណ៌ខ្មៅបុរាណផលិតពីវត្ថុធាតុដើមល្អប្រណីត។" }, 
+                img: "https://images.unsplash.com/photo-1583743814966-8936f5b7be7a?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 3, 
+                name: { en: "Essential Hoodie - Beige", kh: "អាវរងា - ពណ៌ប៊ីស" }, 
+                price: 25.00, 
+                category: "hoodies", 
+                color: { en: "Beige", kh: "ពណ៌ប៊ីស" }, 
+                desc: { en: "Soft fleece hoodie, perfect for cold weather.", kh: "អាវរងាសាច់ទន់ កក់ក្តៅបំផុតសម្រាប់អាកាសធាតុត្រជាក់។" }, 
+                img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 4, 
+                name: { en: "Comfort Hoodie - Grey", kh: "អាវរងា - ពណ៌ប្រផេះ" }, 
+                price: 25.00, 
+                category: "hoodies", 
+                color: { en: "Grey", kh: "ពណ៌ប្រផេះ" }, 
+                desc: { en: "Everyday comfort grey hoodie with double stitching.", kh: "អាវរងាពណ៌ប្រផេះសម្រាប់ប្រើប្រាស់ប្រចាំថ្ងៃ មានថ្នេរពីរជាន់មាំល្អ។" }, 
+                img: "https://images.unsplash.com/photo-1527719327859-c6ce80353573?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 5, 
+                name: { en: "Casual Set - Khaki", kh: "ឈុតសម្លៀកបំពាក់ - ពណ៌កាគី" }, 
+                price: 35.00, 
+                category: "sets", 
+                color: { en: "Khaki", kh: "ពណ៌កាគី" }, 
+                desc: { en: "Matching top and bottom set for a complete look.", kh: "ឈុតខោអាវស៊ីគ្នា ផ្តល់នូវភាពស្រស់ស្អាតនិងទាន់សម័យ។" }, 
+                img: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 6, 
+                name: { en: "Sporty Set - Navy", kh: "ឈុតសម្លៀកបំពាក់កីឡា - ពណ៌ទឹកប៊ិច" }, 
+                price: 35.00, 
+                category: "sets", 
+                color: { en: "Navy", kh: "ពណ៌ទឹកប៊ិច" }, 
+                desc: { en: "Breathable fabric set ideal for active wear.", kh: "ឈុតក្រណាត់មានខ្យល់ចេញចូលល្អ ស័ក្តិសមសម្រាប់ការហាត់ប្រាណ។" }, 
+                img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 7, 
+                name: { en: "Graphic Oversized Tee", kh: "អាវយឺតរាងធំមានរូប" }, 
+                price: 18.00, 
+                category: "tshirts", 
+                color: { en: "Vintage White", kh: "ពណ៌សបែបបុរាណ" }, 
+                desc: { en: "Streetwear style oversized tee with unique graphics.", kh: "អាវយឺតរាងធំស្ទីល Streetwear ជាមួយក្រាហ្វិកប្លែកភ្នែក។" }, 
+                img: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&q=80&w=600" 
+            },
+            { 
+                id: 8, 
+                name: { en: "Urban Zipper Hoodie", kh: "អាវរងាមានខ្សែរ៉ូត" }, 
+                price: 28.00, 
+                category: "hoodies", 
+                color: { en: "Olive Green", kh: "ពណ៌បៃតងចាស់" }, 
+                desc: { en: "Modern zipper hoodie with deep pockets.", kh: "អាវរងាម៉ូតទំនើបមានខ្សែរ៉ូត និងហោប៉ៅជ្រៅងាយស្រួលដាក់របស់។" }, 
+                img: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80&w=600" 
+            }
+        ];
+
+        let cart = [];
+        let currentLang = 'en';
+
+        window.setLang = (lang) => {
+            currentLang = lang;
+            document.body.className = lang === 'kh' ? 'kh min-h-screen flex flex-col' : 'min-h-screen flex flex-col';
+            
+            // UI classes for toggle buttons
+            document.getElementById('btn-en').className = lang === 'en' ? 'px-3 py-1 text-[10px] font-bold rounded-full transition-all bg-white shadow-sm text-slate-900' : 'px-3 py-1 text-[10px] font-bold rounded-full transition-all text-slate-400';
+            document.getElementById('btn-kh').className = lang === 'kh' ? 'px-3 py-1 text-[10px] font-bold rounded-full transition-all bg-white shadow-sm text-slate-900' : 'px-3 py-1 text-[10px] font-bold rounded-full transition-all text-slate-400';
+
+            // Text content
+            document.querySelectorAll('[data-t]').forEach(el => {
+                const key = el.dataset.t;
+                el.textContent = TRANSLATIONS[lang][key];
+            });
+
+            // Placeholders
+            document.querySelectorAll('[data-placeholder]').forEach(el => {
+                const key = el.dataset.placeholder;
+                el.placeholder = TRANSLATIONS[lang][key];
+            });
+
+            renderProducts();
+            renderCart();
+        };
+
+        function renderProducts(filter = 'all') {
+            const grid = document.getElementById('product-grid');
+            const activeFilter = document.querySelector('.cat-filter-btn.bg-slate-900')?.dataset.cat || 'all';
+            const finalFilter = filter === 'all' && activeFilter !== 'all' ? activeFilter : filter;
+
+            const filtered = finalFilter === 'all' ? PRODUCTS : PRODUCTS.filter(p => p.category === finalFilter);
+            grid.innerHTML = filtered.map(p => `
+                <div class="product-card group" onclick="window.toggleDetails(${p.id}, true)">
+                    <div class="product-image-container relative aspect-[3/4] mb-4">
+                        <img src="${p.img}" class="w-full h-full object-cover" crossorigin="anonymous">
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-sm">${p.name[currentLang]}</h3>
+                            <p class="text-[10px] text-slate-400 font-medium">${p.color[currentLang]}</p>
+                        </div>
+                        <p class="font-bold text-slate-900 text-sm">$${p.price.toFixed(2)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.toggleDetails = (id, show) => {
+            const modal = document.getElementById('details-modal');
+            if (show) {
+                const p = PRODUCTS.find(x => x.id === id);
+                document.getElementById('detail-img').src = p.img;
+                document.getElementById('detail-name').textContent = p.name[currentLang];
+                document.getElementById('detail-price').textContent = `$${p.price.toFixed(2)}`;
+                document.getElementById('detail-cat').textContent = TRANSLATIONS[currentLang][`cat_${p.category}`] || p.category;
+                document.getElementById('detail-desc').textContent = p.desc[currentLang];
+                document.getElementById('detail-add-btn').onclick = () => { addToCart(p.id); toggleDetails(null, false); };
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        };
+
+        window.toggleCart = (show) => {
+            const modal = document.getElementById('cart-modal');
+            const panel = document.getElementById('cart-panel');
+            if (show) {
+                modal.classList.remove('hidden');
+                setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+                renderCart();
+            } else {
+                panel.classList.add('translate-x-full');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        function addToCart(id) {
+            const item = PRODUCTS.find(p => p.id === id);
+            const inCart = cart.find(c => c.id === id);
+            if (inCart) inCart.qty++; else cart.push({ ...item, qty: 1 });
+            updateCartCount();
+            showToast(`${item.name[currentLang]} ${TRANSLATIONS[currentLang].toast_added}`);
+        }
+
+        window.removeFromCart = (id) => {
+            cart = cart.filter(item => item.id !== id);
+            updateCartCount();
+            renderCart();
+        }
+
+        function updateCartCount() {
+            document.getElementById('cart-count').textContent = cart.reduce((acc, curr) => acc + curr.qty, 0);
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            const totalEl = document.getElementById('cart-total-value');
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 py-10">${TRANSLATIONS[currentLang].empty_cart}</p>`;
+                totalEl.textContent = '$0.00';
+                return;
+            }
+            let total = 0;
+            container.innerHTML = cart.map(item => {
+                total += item.price * item.qty;
+                return `
+                <div class="flex gap-4">
+                    <img src="${item.img}" class="w-16 h-20 object-cover rounded-lg" crossorigin="anonymous">
+                    <div class="flex-grow flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between">
+                                <h4 class="font-bold text-xs">${item.name[currentLang]}</h4>
+                                <button onclick="removeFromCart(${item.id})" class="text-slate-300 hover:text-red-500 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-medium mt-1">${item.color[currentLang]}</p>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-slate-400">${TRANSLATIONS[currentLang].qty_label}: ${item.qty}</span>
+                            <p class="font-bold text-xs">$${(item.price * item.qty).toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            totalEl.textContent = `$${total.toFixed(2)}`;
+        }
+
+        async function sendToTelegram() {
+            if (cart.length === 0) return;
+
+            const name = document.getElementById('cust-name').value.trim();
+            const phone = document.getElementById('cust-phone').value.trim();
+
+            if (!name || !phone) {
+                showToast(TRANSLATIONS[currentLang].toast_validation);
+                return;
+            }
+            
+            const btn = document.getElementById('checkout-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = TRANSLATIONS[currentLang].processing;
+
+            const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+            const orderId = `MM-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // Populate receipt template with correct language
+            document.getElementById('pdf-t-receipt').textContent = TRANSLATIONS[currentLang].receipt_label;
+            document.getElementById('pdf-t-customer').textContent = TRANSLATIONS[currentLang].customer_label;
+            document.getElementById('pdf-t-item').textContent = TRANSLATIONS[currentLang].items_label;
+            document.getElementById('pdf-t-qty').textContent = TRANSLATIONS[currentLang].qty_label;
+            document.getElementById('pdf-t-total').textContent = TRANSLATIONS[currentLang].total_label;
+            document.getElementById('pdf-t-totaldue').textContent = TRANSLATIONS[currentLang].total_due_label;
+
+            document.getElementById('pdf-date').textContent = new Date().toLocaleDateString();
+            document.getElementById('pdf-order-id').textContent = orderId;
+            document.getElementById('pdf-cust-name').textContent = name;
+            document.getElementById('pdf-cust-phone').textContent = phone;
+            document.getElementById('pdf-grand-total').textContent = `$${total.toFixed(2)}`;
+            document.getElementById('pdf-items-list').innerHTML = cart.map(i => `<tr><td style="padding: 12px 0;"><p style="margin: 0; font-weight: 700;">${i.name[currentLang]}</p></td><td style="text-align: center;">${i.qty}</td><td style="text-align: right;">$${(i.price * i.qty).toFixed(2)}</td></tr>`).join('');
+
+            try {
+                const container = document.getElementById('pdf-container');
+                container.style.visibility = 'visible';
+                container.style.left = '0';
+                container.style.top = '0';
+
+                const canvas = await html2canvas(document.getElementById('pdf-template'), {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: "#ffffff"
+                });
+
+                container.style.visibility = 'hidden';
+                container.style.left = '-9999px';
+
+                const imageData = canvas.toDataURL("image/png");
+                const base64Data = imageData.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'image/png' });
+
+                let summary = cart.map(i => `• ${i.name[currentLang]} (x${i.qty})`).join('\n');
+
+                const formData = new FormData();
+                formData.append('chat_id', SHOP_CHAT_ID);
+                formData.append('photo', blob, `order_${orderId}.png`);
+                formData.append('caption', `📦 *NEW ORDER: ${orderId}*\n\n👤 *Customer:* ${name}\n📞 *Phone:* ${phone}\n\n*Items:*\n${summary}\n\n*Total: $${total.toFixed(2)}*\n\n_Customer is contacting you now..._`);
+                formData.append('parse_mode', 'Markdown');
+
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showToast(TRANSLATIONS[currentLang].toast_receipt_sent);
+                    setTimeout(() => {
+                        const itemsList = cart.map(i => `• ${i.name[currentLang]} (x${i.qty})`).join('\n');
+                        const finalMsg = `${TRANSLATIONS[currentLang].hi_is} ${name}. ${TRANSLATIONS[currentLang].just_placed} (ID: ${orderId})\n\n${TRANSLATIONS[currentLang].items_label}:\n${itemsList}\n\nTotal: $${total.toFixed(2)}\n\n${TRANSLATIONS[currentLang].sent_receipt} ${phone}.`;
+                        
+                        window.open(`https://t.me/${TELEGRAM_USERNAME}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+                        cart = [];
+                        updateCartCount();
+                        toggleCart(false);
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }, 1000);
+                } else {
+                    throw new Error("Telegram failed");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Connection error. Try again.");
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        document.getElementById('checkout-btn').onclick = sendToTelegram;
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.replace('opacity-0', 'opacity-100');
+            t.classList.replace('translate-y-4', 'translate-y-0');
+            setTimeout(() => { t.classList.replace('opacity-100', 'opacity-0'); t.classList.replace('translate-y-0', 'translate-y-4'); }, 5000);
+        }
+
+        document.getElementById('cart-button').onclick = () => window.toggleCart(true);
+        document.querySelectorAll('.cat-filter-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.cat-filter-btn').forEach(b => b.className = 'cat-filter-btn px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 bg-white border border-gray-200 rounded-full transition-all');
+                e.target.className = 'cat-filter-btn px-6 py-2 text-sm font-semibold rounded-full transition-all bg-slate-900 text-white shadow-lg';
+                renderProducts(e.target.dataset.cat);
+            };
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setLang('en');
+        });
+    </script>
+</body>
+</html>
